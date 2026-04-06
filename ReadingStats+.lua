@@ -719,6 +719,7 @@ function ReadingStatsTable:init()
         title   = Font:getFace("NotoSans-Regular.ttf", 18),
         title_main = Font:getFace("NotoSans-Regular.ttf", 19),
         title_author = Font:getFace("NotoSans-Regular.ttf", 13),
+        title_main = Font:getFace("NotoSans-Regular.ttf", 19),
         title_meta = Font:getFace("NotoSans-Regular.ttf", 14),
         meta    = Font:getFace("NotoSans-Regular.ttf", 15),
         session = Font:getFace("NotoSans-Regular.ttf", 16),
@@ -805,6 +806,14 @@ function ReadingStatsTable:buildContent()
     local visible_time = sumDuration(stats_data)
     local visible_pages = sumPages(stats_data)
     local visible_sec_per_page = formatSecPerPage(visible_time, visible_pages)
+    local visible_label = _("Visible period")
+    local visible_speed = "-"
+    if valid_sessions_total > 0 and valid_duration_total > 0 then
+        local pph = (valid_pages_total * 3600) / valid_duration_total
+        visible_speed = string.format("%.0f %s", pph, _("pages/h"))
+    end
+    local avg_session_minutes = getAvgSessionMinutes(all_stats)
+    local avg_session_minutes = getAvgSessionMinutes(stats_data)
 
     local meta1 = TextWidget:new{
         text = string.format("%s: %s   ·   %s: %s",
@@ -816,6 +825,9 @@ function ReadingStatsTable:buildContent()
     local meta2 = TextWidget:new{
         text = string.format("%s: %s",
             _("sec/page"), visible_sec_per_page),
+        text = string.format("%s: %s   ·   %d p   ·   %s   ·   %s: %s",
+            visible_label, formatDurationCompact(visible_time), visible_pages, visible_speed,
+            _("Avg session"), avg_session_minutes),
         face = self.fonts.meta,
     }
 
