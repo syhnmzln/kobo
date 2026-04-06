@@ -47,9 +47,10 @@ local PATCH_L10N = {
         ["Days Read"] = "days reading",
         ["reading in this session"] = "reading in this session",
         ["Book total"] = "Book total",
-        ["Streak"] = "Streak",
+        ["Actual reading total"] = "Actual reading total",
         ["Visible period"] = "Visible period",
         ["Visible sessions"] = "Visible sessions",
+        ["Avg session"] = "Avg session",
         ["Summary"] = "Summary",
         ["pages/h"] = "pages/h",
         ["days"] = "days",
@@ -248,15 +249,6 @@ local function formatRange(first_page, last_page)
         return tostring(last_page)
     end
     return "-"
-end
-
-local function daysBetweenISO(d1, d2)
-    local y1, m1, da1 = d1:match("(%d+)-(%d+)-(%d+)")
-    local y2, m2, da2 = d2:match("(%d+)-(%d+)-(%d+)")
-    if not y1 or not y2 then return nil end
-    local t1 = os.time({year=tonumber(y1), month=tonumber(m1), day=tonumber(da1), hour=12})
-    local t2 = os.time({year=tonumber(y2), month=tonumber(m2), day=tonumber(da2), hour=12})
-    return math.floor((t1 - t2) / 86400)
 end
 
 local function getDB()
@@ -474,6 +466,15 @@ local function getBookTitle(ui)
     return book_title
 end
 
+local function getBookAuthor(ui)
+    if not ui or not ui.doc_props then return "" end
+    local author = ui.doc_props.display_author or ui.doc_props.authors or ui.doc_props.author or ""
+    if type(author) == "table" then
+        author = table.concat(author, ", ")
+    end
+    return tostring(author)
+end
+
 local function getTotalDaysRead(book_id)
     if not book_id then return 0 end
     local conn = getDB()
@@ -483,6 +484,23 @@ local function getTotalDaysRead(book_id)
         FROM page_stat_data ps
         WHERE ps.id_book = %d;
     ]], book_id)
+    local result = conn:rowexec(sql)
+    conn:close()
+    return tonumber(result) or 0
+end
+
+local function getActualReadingTotal(book_id, min_seconds, max_seconds)
+    if not book_id then return 0 end
+    min_seconds = tonumber(min_seconds) or 5
+    max_seconds = tonumber(max_seconds) or 120
+    local conn = getDB()
+    if not conn then return 0 end
+    local sql = string.format([[
+        SELECT COALESCE(sum(ps.duration), 0)
+        FROM page_stat_data ps
+        WHERE ps.id_book = %d
+          AND ps.duration BETWEEN %d AND %d;
+    ]], book_id, min_seconds, max_seconds)
     local result = conn:rowexec(sql)
     conn:close()
     return tonumber(result) or 0
@@ -512,18 +530,38 @@ local function sumDelta(stats)
     return total
 end
 
-local function getStreak(stats)
-    if not stats or #stats == 0 then return 0 end
-    local streak = 1
-    for i = 1, #stats - 1 do
-        local diff = daysBetweenISO(stats[i].date, stats[i + 1].date)
-        if diff == 1 then
-            streak = streak + 1
-        else
-            break
+local function getAvgSessionMinutes(stats)
+    local valid_count = 0
+    local actual_time = 0
+    for _, row in ipairs(stats or {}) do
+        local pages = tonumber(row.pages) or 0
+        local duration = tonumber(row.duration) or 0
+        if pages > 1 and duration >= 60 then
+            valid_count = valid_count + 1
+            actual_time = actual_time + duration
         end
     end
-    return streak
+    if valid_count == 0 then
+        return "-"
+    end
+    local avg_minutes = (actual_time / valid_count) / 60
+    return string.format("%.1f %s", avg_minutes, _("min"))
+end
+
+local function getValidSessionTotals(stats)
+    local total_pages = 0
+    local total_duration = 0
+    local valid_count = 0
+    for _, row in ipairs(stats or {}) do
+        local pages = tonumber(row.pages) or 0
+        local duration = tonumber(row.duration) or 0
+        if pages > 1 and duration >= 60 then
+            valid_count = valid_count + 1
+            total_pages = total_pages + pages
+            total_duration = total_duration + duration
+        end
+    end
+    return total_pages, total_duration, valid_count
 end
 
 local function fixedCol(widget, width)
@@ -695,7 +733,7 @@ end
 Dispatcher:registerAction("reading_history_popup_table_plus_v1", {
     category = "none",
     event = "ShowReadingHistoryPopupTablePlusV1",
-    title = "Reading History Popup Table Plus v1.0",
+    title = "ReadingStats+",
     reader = true,
 })
 
@@ -715,8 +753,8 @@ function ConfigPopup:init()
     self.dimen = Geom:new{ w = self.screen_w, h = self.screen_h }
 
     self.fonts = {
-        title = Font:getFace("NotoSerif-Bold.ttf", 18),
-        item = Font:getFace("NotoSerif-Bold.ttf", 16),
+        title = Font:getFace("NotoSans-Regular.ttf", 18),
+        item = Font:getFace("NotoSans-Regular.ttf", 16),
     }
 
     local mode = getMode()
@@ -838,15 +876,15 @@ function ReadingStatsTable:init()
     self.screen_h = screen_h
 
     self.fonts = {
-        header  = Font:getFace("NotoSerif-Bold.ttf", 14),
-        cell    = Font:getFace("NotoSerif-Bold.ttf", 15),
-        title   = Font:getFace("NotoSerif-Bold.ttf", 18),
-        title_main = Font:getFace("NotoSerif-Bold.ttf", 20),
+        header  = Font:getFace("NotoSans-Regular.ttf", 14),
+        cell    = Font:getFace("NotoSans-Regular.ttf", 15),
+        title   = Font:getFace("NotoSans-Regular.ttf", 18),
+        title_main = Font:getFace("NotoSans-Bold.ttf", 20),
         title_meta = Font:getFace("NotoSans-Regular.ttf", 14),
-        meta    = Font:getFace("NotoSerif-Bold.ttf", 15),
-        session = Font:getFace("NotoSerif-Bold.ttf", 16),
-        summary = Font:getFace("NotoSerif-Bold.ttf", 15),
-        config  = Font:getFace("NotoSerif-Bold.ttf", 10),
+        meta    = Font:getFace("NotoSans-Regular.ttf", 15),
+        session = Font:getFace("NotoSans-Regular.ttf", 16),
+        summary = Font:getFace("NotoSans-Regular.ttf", 15),
+        config  = Font:getFace("NotoSans-Regular.ttf", 10),
     }
 
     self.layout = buildLayout(screen_w, Size.padding.default, Screen:scaleBySize(4))
@@ -884,6 +922,11 @@ function ReadingStatsTable:buildContent()
     end
 
     local book_title = getBookTitle(self.ui)
+    local book_author = getBookAuthor(self.ui)
+    local title_text = book_title
+    if book_author ~= "" then
+        title_text = string.format("%s — %s", book_title, book_author)
+    end
     local days_read = getTotalDaysRead(book_id)
 
     local total_rows = #all_stats
@@ -902,7 +945,7 @@ function ReadingStatsTable:buildContent()
 
     
 local title_main = TextWidget:new{
-        text = wrapTitle(book_title, 26, 2),
+        text = wrapTitle(title_text, 26, 2),
         face = self.fonts.title_main or self.fonts.title or self.fonts.cell,
     }
 
@@ -938,29 +981,32 @@ local title_main = TextWidget:new{
     }
 
     local total_book_time = sumDuration(daily_stats)
-    local streak = getStreak(daily_stats)
+    local actual_book_time = getActualReadingTotal(book_id, 5, 120)
+    local all_time = sumDuration(all_stats)
+    local all_pages = sumPages(all_stats)
+    local all_delta = sumDelta(all_stats)
     local visible_time = sumDuration(stats_data)
     local visible_pages = sumPages(stats_data)
-    local visible_delta = sumDelta(stats_data)
+    local valid_pages_total, valid_duration_total, valid_sessions_total = getValidSessionTotals(all_stats)
     local visible_speed = "-"
-    if visible_pages > 0 and visible_time > 0 then
-        local speed = formatSpeed(visible_pages, visible_time)
-        if speed ~= "-" then
-            visible_speed = string.format("%s %s", speed, _("pages/h"))
-        end
+    if valid_sessions_total > 0 and valid_duration_total > 0 then
+        local pph = (valid_pages_total * 3600) / valid_duration_total
+        visible_speed = string.format("%.0f %s", pph, _("pages/h"))
     end
+    local avg_session_minutes = getAvgSessionMinutes(all_stats)
 
     local meta1 = TextWidget:new{
-        text = string.format("%s: %s   ·   %s: %d %s",
+        text = string.format("%s: %s   ·   %s: %s",
             _("Book total"), formatDurationCompact(total_book_time),
-            _("Streak"), streak, _("days")),
+            _("Actual reading total"), formatDurationCompact(actual_book_time)),
         face = self.fonts.meta,
     }
 
     local visible_label = (mode == "daily") and _("Visible period") or _("Visible sessions")
     local meta2 = TextWidget:new{
-        text = string.format("%s: %s   ·   %d p   ·   %s",
-            visible_label, formatDurationCompact(visible_time), visible_pages, visible_speed),
+        text = string.format("%s: %s   ·   %d p   ·   %s   ·   %s: %s",
+            visible_label, formatDurationCompact(visible_time), visible_pages, visible_speed,
+            _("Avg session"), avg_session_minutes),
         face = self.fonts.meta,
     }
 
@@ -987,7 +1033,7 @@ local title_main = TextWidget:new{
 
     local summary_widget = TextWidget:new{
         text = string.format("%s: %s · %d p · %s",
-            _("Summary"), formatProgressDelta(visible_delta), visible_pages, formatDurationCompact(visible_time)),
+            _("Summary"), formatProgressDelta(all_delta), all_pages, formatDurationCompact(all_time)),
         face = self.fonts.summary,
     }
 
