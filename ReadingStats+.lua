@@ -50,6 +50,9 @@ local PATCH_L10N = {
         ["Actual reading total"] = "Actual reading total",
         ["Daily avg"] = "Daily avg",
         ["sec/page"] = "sec/page",
+        ["Visible period"] = "Visible period",
+        ["Visible sessions"] = "Visible sessions",
+        ["Avg session"] = "Avg session",
         ["Summary"] = "Summary",
         ["pages/h"] = "pages/h",
         ["days"] = "days",
@@ -566,6 +569,7 @@ local function getSecondsPerPage(stats)
     end
     local sec_per_page = total_duration / total_pages
     return string.format("%.1f %s", sec_per_page, _("sec/page"))
+    return string.format("%.1f %s", avg_minutes, _("min"))
 end
 
 local function fixedCol(widget, width)
@@ -884,6 +888,8 @@ function ReadingStatsTable:init()
         title_main = Font:getFace("NotoSans-Bold.ttf", 19),
         title_meta = Font:getFace("NotoSans-Regular.ttf", 13),
         title_author = Font:getFace("NotoSans-Regular.ttf", 13),
+        title_main = Font:getFace("NotoSans-Regular.ttf", 20),
+        title_meta = Font:getFace("NotoSans-Regular.ttf", 14),
         meta    = Font:getFace("NotoSans-Regular.ttf", 15),
         session = Font:getFace("NotoSans-Regular.ttf", 16),
         summary = Font:getFace("NotoSans-Regular.ttf", 15),
@@ -1000,6 +1006,9 @@ function ReadingStatsTable:buildContent()
     local all_pages = sumPages(all_stats)
     local all_delta = sumDelta(all_stats)
     local valid_pages_total, valid_duration_total, valid_sessions_total = getValidSessionTotals(all_stats)
+    local visible_time = sumDuration(stats_data)
+    local visible_pages = sumPages(stats_data)
+    local visible_delta = sumDelta(stats_data)
     local visible_speed = "-"
     if valid_sessions_total > 0 and valid_duration_total > 0 then
         local pph = (valid_pages_total * 3600) / valid_duration_total
@@ -1007,6 +1016,7 @@ function ReadingStatsTable:buildContent()
     end
     local avg_session_minutes = getAvgSessionMinutes(all_stats)
     local sec_per_page = getSecondsPerPage(all_stats)
+    local avg_session_minutes = getAvgSessionMinutes(stats_data)
 
     local meta1 = TextWidget:new{
         text = string.format("%s: %s   ·   %s: %s",
@@ -1018,6 +1028,14 @@ function ReadingStatsTable:buildContent()
     local meta2 = TextWidget:new{
         text = string.format("%s   ·   %s: %s   ·   %s",
             visible_speed, _("Daily avg"), avg_session_minutes, sec_per_page),
+        text = string.format("%s: %s   ·   %d p   ·   %s   ·   %s: %s",
+            visible_label, formatDurationCompact(visible_time), visible_pages, visible_speed,
+            _("Avg session"), avg_session_minutes),
+        face = self.fonts.meta,
+    }
+
+    local meta3 = TextWidget:new{
+        text = string.format("%s: %s", _("Mode"), modeLabel(mode)),
         face = self.fonts.meta,
     }
 
