@@ -47,6 +47,7 @@ local PATCH_L10N = {
         ["Actual reading total"] = "Actual reading total",
         ["Visible period"] = "Visible period",
         ["Visible sessions"] = "Visible sessions",
+        ["Daily avg"] = "Daily avg",
         ["Avg session"] = "Avg session",
         ["Summary"] = "Summary",
         ["pages/h"] = "pages/h",
@@ -793,18 +794,13 @@ function ReadingStatsTable:buildContent()
     local total_book_time = sumDuration(daily_stats)
     local actual_book_time = getActualReadingTotal(book_id, 5, 120)
     local all_time = sumDuration(all_stats)
-    local all_pages = sumPages(all_stats)
     local all_delta = sumDelta(all_stats)
     local valid_pages_total, valid_duration_total, valid_sessions_total = getValidSessionTotals(all_stats)
-    local visible_time = sumDuration(stats_data)
-    local visible_pages = sumPages(stats_data)
-    local visible_label = _("Visible period")
     local visible_speed = "-"
     if valid_sessions_total > 0 and valid_duration_total > 0 then
         local pph = (valid_pages_total * 3600) / valid_duration_total
         visible_speed = string.format("%.0f %s", pph, _("pages/h"))
     end
-    local avg_session_minutes = getAvgSessionMinutes(all_stats)
     local avg_session_minutes = getAvgSessionMinutes(stats_data)
 
     local meta1 = TextWidget:new{
@@ -815,8 +811,8 @@ function ReadingStatsTable:buildContent()
     }
 
     local meta2 = TextWidget:new{
-        text = string.format("%s: %s   ·   %d p   ·   %s   ·   %s: %s",
-            visible_label, formatDurationCompact(visible_time), visible_pages, visible_speed,
+        text = string.format("%s: %s   ·   %s: %s",
+            _("Daily avg"), visible_speed,
             _("Avg session"), avg_session_minutes),
         face = self.fonts.meta,
     }
@@ -838,9 +834,8 @@ function ReadingStatsTable:buildContent()
     }
 
     local summary_widget = TextWidget:new{
-        text = string.format("%s: %s · %d p · %s · %s · %s: %s",
-            _("Summary"), formatProgressDelta(all_delta), all_pages, formatDurationCompact(all_time),
-            visible_speed, _("Avg session"), avg_session_minutes),
+        text = string.format("%s: %s · %s",
+            _("Summary"), formatProgressDelta(all_delta), formatDurationCompact(all_time)),
         face = self.fonts.summary,
     }
 
