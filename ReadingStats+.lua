@@ -54,6 +54,8 @@ local PATCH_L10N = {
         ["pages/h"] = "pg/hr",
         ["pg/session"] = "pg/session",
         ["%/hr"] = "%/hr",
+        ["total"] = "total",
+        ["gain"] = "gain",
         ["days"] = "days",
         ["No data"] = "No data",
         ["avg"] = "avg",
@@ -899,7 +901,6 @@ function ReadingStatsTable:buildContent()
     local title_row = title
 
     local all_time = sumDuration(all_stats)
-    local all_delta = sumDelta(all_stats)
     local valid_pages_total, valid_duration_total, valid_sessions_total = getValidSessionTotals(all_stats)
     local visible_speed = "-"
     if valid_sessions_total > 0 and valid_duration_total > 0 then
@@ -980,9 +981,27 @@ function ReadingStatsTable:buildContent()
     }
 
     local summary_widget = TextWidget:new{
-        text = string.format("%s: %s · %s",
-            _("Summary"), formatProgressDelta(all_delta), formatDurationCompact(all_time)),
+        text = string.format("%s: %s · %s %s · %s %s",
+            _("Summary"),
+            formatDurationCompact(all_time),
+            formatProgressTotal((all_stats[1] and all_stats[1].progress) or 0), _("total"),
+            formatProgressDelta((all_stats[1] and all_stats[1].delta_progress) or 0), _("gain")),
         face = self.fonts.summary,
+    }
+
+    local summary_meta_widget = TextWidget:new{
+        text = string.format("%s %s · %s · %s %s",
+            _("Daily avg"), formatHoursMinutes(daily_avg_seconds),
+            visible_speed,
+            progress_efficiency, _("%/hr")),
+        face = self.fonts.meta,
+    }
+
+    local summary_block = VerticalGroup:new{
+        align = "left",
+        summary_widget,
+        VerticalSpan:new{ height = Size.padding.tiny or 2 },
+        summary_meta_widget,
     }
 
     local header = buildTableHeader(self.fonts, self.layout)
@@ -1006,7 +1025,7 @@ function ReadingStatsTable:buildContent()
     local stats_frame = makeFrame(stats_widget, 0, Size.padding.tiny or 2)
     local session_frame = makeFrame(session_widget, 0, Size.padding.small)
     local rows_frame = makeFrame(rows, Size.padding.small, Size.padding.small)
-    local summary_frame = makeFrame(summary_widget, Size.padding.small, Size.padding.small)
+    local summary_frame = makeFrame(summary_block, Size.padding.small, Size.padding.small)
 
     table.insert(table_content, title_frame)
     table.insert(table_content, stats_frame)
