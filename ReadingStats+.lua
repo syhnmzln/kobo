@@ -234,10 +234,11 @@ local function getDB()
     return SQ3.open(stats_db_path)
 end
 
-local function getDailyStats(book_id, days)
+local function getDailyStats(book_id, days, effective_total_pages)
     if not book_id or not days or days <= 0 then return {} end
     local conn = getDB()
     if not conn then return {} end
+    local divisor = tonumber(effective_total_pages) or 0
 
     local sql = string.format([[
         SELECT
@@ -268,6 +269,39 @@ local function getDailyStats(book_id, days)
         GROUP BY date(ps.start_time, 'unixepoch', 'localtime')
         ORDER BY dates DESC;
     ]], book_id, days)
+
+    if divisor > 0 then
+        sql = string.format([[
+            SELECT
+                date(ps.start_time, 'unixepoch', 'localtime') AS dates,
+                count(DISTINCT ps.page) AS pages,
+                sum(ps.duration) AS durations,
+                (SELECT ps2.page
+                 FROM page_stat_data ps2
+                 WHERE ps2.id_book = ps.id_book
+                   AND date(ps2.start_time, 'unixepoch', 'localtime') = date(ps.start_time, 'unixepoch', 'localtime')
+                 ORDER BY ps2.start_time ASC
+                 LIMIT 1) AS first_page,
+                (SELECT ps3.page
+                 FROM page_stat_data ps3
+                 WHERE ps3.id_book = ps.id_book
+                   AND date(ps3.start_time, 'unixepoch', 'localtime') = date(ps.start_time, 'unixepoch', 'localtime')
+                 ORDER BY ps3.start_time DESC
+                 LIMIT 1) AS last_page,
+                (SELECT min(1.0, (ps4.page * 1.0 / %d))
+                 FROM page_stat_data ps4
+                 WHERE ps4.id_book = ps.id_book
+                   AND date(ps4.start_time, 'unixepoch', 'localtime') = date(ps.start_time, 'unixepoch', 'localtime')
+                   AND ps4.page <= %d
+                 ORDER BY ps4.start_time DESC
+                 LIMIT 1) AS total_percentage
+            FROM page_stat_data ps
+            WHERE ps.id_book = %d
+              AND date(ps.start_time, 'unixepoch', 'localtime') >= date('now', '-' || %d || ' days')
+            GROUP BY date(ps.start_time, 'unixepoch', 'localtime')
+            ORDER BY dates DESC;
+        ]], divisor, divisor, book_id, days)
+    end
 
     local results = conn:exec(sql)
     conn:close()
@@ -452,6 +486,30 @@ local function getBookAuthor(ui)
         author = table.concat(author, ", ")
     end
     return tostring(author)
+end
+
+local function getEffectiveTotalPages(ui)
+    if not ui or not ui.document then
+        return nil
+    end
+    local doc = ui.document
+
+    if doc.hasHiddenFlows and doc:hasHiddenFlows()
+        and ui.getCurrentPage and doc.getPageFlow and doc.getTotalPagesInFlow then
+        local current_page = ui:getCurrentPage()
+        if current_page then
+            local flow = doc:getPageFlow(current_page)
+            local flow_total = flow and doc:getTotalPagesInFlow(flow) or nil
+            if flow_total and flow_total > 0 then
+                return flow_total
+            end
+        end
+    end
+
+    if doc.getPageCount then
+        return doc:getPageCount()
+    end
+    return nil
 end
 
 local function getTotalDaysRead(book_id)
@@ -845,7 +903,8 @@ function ReadingStatsTable:buildContent()
     end
 
     local book_id = self.stats_plugin and self.stats_plugin.id_curr_book
-    local daily_stats = getDailyStats(book_id, 365)
+    local effective_total_pages = getEffectiveTotalPages(self.ui)
+    local daily_stats = getDailyStats(book_id, 365, effective_total_pages)
     local session_stats = getSessionStats(book_id, 365)
     local all_stats = daily_stats
 
