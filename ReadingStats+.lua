@@ -49,8 +49,11 @@ local PATCH_L10N = {
         ["Visible sessions"] = "Visible sessions",
         ["Daily avg"] = "Daily avg",
         ["Avg session"] = "Avg session",
+        ["Med session"] = "Med session",
         ["Summary"] = "Summary",
-        ["pages/h"] = "pg/h",
+        ["pages/h"] = "pg/hr",
+        ["pg/session"] = "pg/session",
+        ["%/hr"] = "%/hr",
         ["days"] = "days",
         ["No data"] = "No data",
         ["avg"] = "avg",
@@ -168,6 +171,17 @@ local function formatDurationCompact(seconds)
     else
         return string.format("%dm", minutes)
     end
+end
+
+local function formatSessionLength(seconds)
+    if not seconds or seconds <= 0 then
+        return "-"
+    end
+    local minutes = seconds / 60
+    if minutes < 60 then
+        return string.format("%.1f %s", minutes, _("min"))
+    end
+    return formatDurationCompact(seconds)
 end
 
 local function formatProgressDelta(delta)
@@ -531,11 +545,58 @@ local function formatAvgSessionLength(stats)
     end
 
     local avg_seconds = total_seconds / valid_count
-    local avg_minutes = avg_seconds / 60
-    if avg_minutes < 60 then
-        return string.format("%.1f %s", avg_minutes, _("min"))
+    return formatSessionLength(avg_seconds)
+end
+
+local function getMedianSessionLength(stats)
+    local durations = {}
+    for _, row in ipairs(stats or {}) do
+        local pages = tonumber(row.pages) or 0
+        local duration = tonumber(row.duration) or 0
+        if pages > 1 and duration >= 60 then
+            table.insert(durations, duration)
+        end
     end
-    return formatDurationCompact(avg_seconds)
+    if #durations == 0 then
+        return "-"
+    end
+    table.sort(durations)
+    local n = #durations
+    local median
+    if n % 2 == 1 then
+        median = durations[(n + 1) / 2]
+    else
+        median = (durations[n / 2] + durations[n / 2 + 1]) / 2
+    end
+    return formatSessionLength(median)
+end
+
+local function getPagesPerSession(stats)
+    local valid_count = 0
+    local total_pages = 0
+    for _, row in ipairs(stats or {}) do
+        local pages = tonumber(row.pages) or 0
+        local duration = tonumber(row.duration) or 0
+        if pages > 1 and duration >= 60 then
+            valid_count = valid_count + 1
+            total_pages = total_pages + pages
+        end
+    end
+    if valid_count == 0 then
+        return "-"
+    end
+    local avg_pages = total_pages / valid_count
+    return string.format("%.1f", avg_pages)
+end
+
+local function getProgressEfficiency(stats)
+    local total_delta = sumDelta(stats)
+    local total_seconds = sumDuration(stats)
+    if total_seconds <= 0 then
+        return "-"
+    end
+    local per_hour = (total_delta * 100) / (total_seconds / 3600)
+    return string.format("%.2f", per_hour)
 end
 
 local function getValidSessionTotals(stats)
@@ -839,6 +900,9 @@ function ReadingStatsTable:buildContent()
     local daily_avg_minutes = getDailyAverageMinutes(stats_data)
     local visible_sessions = getFilteredSessionStatsByDates(session_stats, stats_data)
     local avg_session_minutes = formatAvgSessionLength(visible_sessions)
+    local med_session_minutes = getMedianSessionLength(visible_sessions)
+    local pages_per_session = getPagesPerSession(visible_sessions)
+    local progress_efficiency = getProgressEfficiency(stats_data)
 
     local meta1 = TextWidget:new{
         text = string.format("%s: %s   ·   %s: %s",
@@ -848,9 +912,12 @@ function ReadingStatsTable:buildContent()
     }
 
     local meta2 = TextWidget:new{
-        text = string.format("%s: %s   ·   %s: %s   ·   %s",
+        text = string.format("%s: %s   ·   %s: %s   ·   %s: %s   ·   %s: %s   ·   %s: %s   ·   %s",
             _("Daily avg"), daily_avg_minutes,
-            _("Avg session"), avg_session_minutes, visible_speed),
+            _("Avg session"), avg_session_minutes,
+            _("Med session"), med_session_minutes,
+            _("pg/session"), pages_per_session,
+            _("%/hr"), progress_efficiency, visible_speed),
         face = self.fonts.meta,
     }
 
