@@ -2,7 +2,7 @@
 
 ## ReadingStats+ for KOReader
 
-**Built on top of the work of u/NataTheCoco and u/Novalis79**
+**Built on the work of u/NataTheCoco and u/Novalis79**
 
 **ReadingStats+** is a customized patch for KOReader designed to provide deeper insights into your reading habits. It features expanded session analytics, smarter progress tracking for complex ebook layouts, and a more information-dense interface.
 
