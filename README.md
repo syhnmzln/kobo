@@ -1,10 +1,4 @@
-diff --git a/README.md b/README.md
-index a793aa6832e639353708b2f97f66dd89d9f5958b..696b5adfb2d20c2dd0ac3a32841361e669fc372f 100644
---- a/README.md
-+++ b/README.md
-@@ -1 +1,76 @@
--# kobo
-\ No newline at end of file
+
 +# ReadingStats+ for KOReader
 +
 +A customized Reading Stats popup for KOReader with expanded session analytics, flow-aware progress handling, and a denser table layout.
