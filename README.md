@@ -33,7 +33,7 @@
 | | `Actual reading` | The "true" time spent (excluding long idle gaps). |
 | **Left Col** | `Daily avg` | Average time spent reading per day. |
 | | `Avg/Med session` | The average and middle-ground (median) length of your sessions. |
-| **Right Col** | `pg/hr` | Your current reading speed. |
+| **Right Col** | `pg/hr` | Your reading speed (accounting only valid sessions). |
 | | `pg/session` | How many pages you typically clear in one sitting. |
 | | `%/hr` | How quickly you are moving through the book total. |
 
