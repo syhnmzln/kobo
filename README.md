@@ -48,6 +48,5 @@
 
 ---
 
-## 📂 Installation & Files
-* `ReadingStats+.lua`: The core plugin file.
-* `README.md`: Plugin documentation.
+## 📂 Installation
+.adds/koreader/patches/`2-Reading-Stats+.lua`
