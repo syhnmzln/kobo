@@ -1,77 +1,53 @@
+## ReadingStats+ for KOReader
 
-+# ReadingStats+ for KOReader
-+
-+A customized Reading Stats popup for KOReader with expanded session analytics, flow-aware progress handling, and a denser table layout.
-+
-+## What this patch adds
-+
-+- **Expanded summary/header stats** with:
-+  - Daily average reading time
-+  - Average session length
-+  - Median session length
-+  - Pages per session
-+  - Progress efficiency (`%/hr`)
-+  - Reading speed (`pg/hr`)
-+- **Actual reading total** that caps per-page duration contributions (to reduce inflated totals from long idle periods).
-+- **Flow-aware progress denominator** support for books with hidden flows.
-+- **7 rows per page** in the daily table (instead of 6).
-+- **Top-row emphasis for today**: if the latest row is today, Time/Pages/Speed/ΔPROG are rendered in bold.
-+- **Two-column stats block** under the title for quick scanning.
-+
-+## Stats and how they are calculated
-+
-+### Title row
-+
-+- `X days`: count of distinct days with recorded reading activity.
-+- `Book total`: sum of daily reading durations.
-+- `Actual reading`: capped per-page duration sum from `page_stat`.
-+
-+### Left stats column
-+
-+- `Daily avg`: average duration per day over the loaded stats window.
-+- `Avg session`: average valid session duration.
-+- `Med session`: median valid session duration.
-+
-+### Right stats column
-+
-+- `<value> pg/hr`: reading speed from valid rows.
-+- `<value> pg/session`: average pages per valid session.
-+- `<value> %/hr`: progress gain per hour.
-+
-+### Session row
-+
-+- `This session: <time>` where `<time>` is bold.
-+
-+### Table columns
-+
-+- `DATE`: local date
-+- `TIME`: total reading time for that day
-+- `PAGES`: distinct pages read that day
-+- `SPEED`: per-row speed (with minimum thresholds)
-+- `ΔPROG`: progress delta vs previous day
-+- `TOTAL`: progress total for that day
-+- `RANGE`: first-to-last page range for the day (capped to day total pages if needed)
-+
-+### Footer summary
-+
-+- `Summary: <total time> · <total%> total · <gain%> gain`
-+
-+## Valid-session rules
-+
-+A session is considered **valid** when:
-+
-+- `pages > 1`
-+- `duration >= 60` seconds
-+
-+These rules are used by avg/median session and pages/session metrics.
-+
-+## Progress handling details
-+
-+- If hidden flows are active and supported, the patch attempts to derive effective total pages from the active flow.
-+- Otherwise it falls back to document page count.
-+- Daily progress is capped to avoid displaying over 100%.
-+
-+## File overview
-+
-+- `ReadingStats+.lua`: plugin implementation.
-+- `README.md`: this documentation.
+**ReadingStats+** is a customized plugin for KOReader designed to provide deeper insights into your reading habits. It features expanded session analytics, smarter progress tracking for complex ebook layouts, and a more information-dense interface.
+
+---
+
+## 🚀 Key Enhancements
+
+### 📊 Advanced Analytics
+* **Daily Averages:** See your average reading time per day.
+* **Session Metrics:** Tracks average and median session lengths, plus pages per session.
+* **Efficiency Tracking:** View your reading speed in **pages per hour (pg/hr)** and progress gain in **percentage per hour (%/hr)**.
+* **Smart Totals:** Includes an "Actual Reading" metric that caps per-page time to prevent idle periods from inflating your total stats.
+
+### 📋 Improved Interface
+* **Two-Column Layout:** A redesigned stats block under the title for faster scanning.
+* **High-Density Table:** Shows **7 rows per page** (up from the default 6).
+* **Visual Cues:** If you've read today, the latest entry is automatically **bolded** for easy identification.
+
+### 🛠️ Smarter Progress Handling
+* **Flow-Aware:** Correctly calculates progress for books with "hidden flows" (common in certain formats) by deriving effective total pages.
+* **Data Validation:** Filters out "junk" data—sessions are only counted if you read more than one page and spent at least 60 seconds reading.
+
+---
+
+## 🔍 Data Reference Guide
+
+### The Stats Header
+| Category | Metric | Description |
+| :--- | :--- | :--- |
+| **Header** | `X days` | Number of unique days you’ve read. |
+| | `Book total` | Raw sum of all recorded reading time. |
+| | `Actual reading` | The "true" time spent (excluding long idle gaps). |
+| **Left Col** | `Daily avg` | Average time spent reading per day. |
+| | `Avg/Med session` | The average and middle-ground length of your sessions. |
+| **Right Col** | `pg/hr` | Your current reading speed. |
+| | `pg/session` | How many pages you typically clear in one sitting. |
+| | `%/hr` | How quickly you are moving through the book total. |
+
+### The Daily Table
+* **DATE:** Local calendar date.
+* **TIME:** Total duration spent reading that day.
+* **PAGES:** Unique pages turned.
+* **SPEED:** Reading speed for that specific day.
+* **ΔPROG:** How much total progress (%) you gained compared to yesterday.
+* **TOTAL:** Your total completion percentage at the end of that day.
+* **RANGE:** The specific page numbers covered (e.g., 10–45).
+
+---
+
+## 📂 Installation & Files
+* `ReadingStats+.lua`: The core plugin file.
+* `README.md`: Plugin documentation.
