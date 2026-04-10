@@ -40,7 +40,9 @@ local function buildPreset(overrides)
 end
 
 local PRELOADED_PRESETS = {
-    ["Default"] = buildPreset({}),
+    ["Default"] = buildPreset({
+            [SETTINGS.BG_FOLDER]                = "@plugin/wallpapers/custom"
+    }),
 
     ["Catppuccin"] = buildPreset({
         [SETTINGS.DARK_MODE]                = true,
