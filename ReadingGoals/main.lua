@@ -628,6 +628,24 @@ function ReadingGoal:_trackPages()
     self:_persistDailyWeeklyToDoc()
 end
 
+function ReadingGoal:_updateBookPeriodProgress(entry, curr)
+    if not entry then return end
+    local prior_read = math.max(0, entry.pages_read or 0)
+    entry.start_page = entry.start_page or (curr - prior_read)
+    entry.max_page = math.max(entry.max_page or entry.start_page or curr, curr)
+    entry.pages_read = math.max(0, entry.max_page - entry.start_page)
+end
+
+function ReadingGoal:_sumGlobalBookProgress(entry)
+    local total = 0
+    for _, state in pairs(entry.books or {}) do
+        local start_page = state.start_page or 0
+        local max_page = state.max_page or start_page
+        total = total + math.max(0, max_page - start_page)
+    end
+    entry.pages_read = total
+end
+
 function ReadingGoal:_trackBookGoal(dw, curr)
     if not dw or not dw.target_pages or dw.target_pages <= 0 then return end
 
@@ -642,14 +660,10 @@ function ReadingGoal:_trackBookGoal(dw, curr)
     end
 
     if not dw.log[key] then
-        dw.log[key] = { pages_read = 0 }
+        dw.log[key] = { pages_read = 0, start_page = curr, max_page = curr }
     end
 
-    local last = dw.last_known_page
-    if last and curr ~= last then
-        local delta = curr - last
-        dw.log[key].pages_read = math.max(0, (dw.log[key].pages_read or 0) + delta)
-    end
+    self:_updateBookPeriodProgress(dw.log[key], curr)
     dw.last_known_page = curr
 end
 
@@ -659,7 +673,6 @@ function ReadingGoal:_trackGlobalGoal(gdw, curr, book_path)
 
     gdw.last_known_pages = gdw.last_known_pages or {}
     gdw.log = gdw.log or {}
-    local last = gdw.last_known_pages[book_path]
 
     local key
     if gdw.mode == "weekly" then
@@ -669,13 +682,26 @@ function ReadingGoal:_trackGlobalGoal(gdw, curr, book_path)
     end
 
     if not gdw.log[key] then
-        gdw.log[key] = { pages_read = 0 }
+        gdw.log[key] = { pages_read = 0, books = {} }
     end
 
-    if last and curr ~= last then
-        local delta = curr - last
-        gdw.log[key].pages_read = math.max(0, (gdw.log[key].pages_read or 0) + delta)
+    local entry = gdw.log[key]
+    entry.books = entry.books or {}
+    if not entry.books[book_path] then
+        local prior_read = 0
+        if next(entry.books) == nil then
+            prior_read = math.max(0, entry.pages_read or 0)
+        end
+        entry.books[book_path] = {
+            start_page = curr - prior_read,
+            max_page = curr,
+        }
     end
+
+    local state = entry.books[book_path]
+    state.start_page = state.start_page or curr
+    state.max_page = math.max(state.max_page or state.start_page, curr)
+    self:_sumGlobalBookProgress(entry)
 
     gdw.last_known_pages[book_path] = curr
     self:_pruneLogs(gdw)
@@ -1180,7 +1206,7 @@ function ReadingGoal:_showSetDailyWeeklyDialog(scope, period, touchmenu_instance
                 target_pages = target,
                 start_date = self:_today(),
                 last_known_page = curr or 0,
-                log = { [key] = { pages_read = 0 } },
+                log = { [key] = { pages_read = 0, start_page = curr or 0, max_page = curr or 0 } },
             }
             if period == "weekly" then
                 self.book_weekly = new_dw
@@ -1195,11 +1221,15 @@ function ReadingGoal:_showSetDailyWeeklyDialog(scope, period, touchmenu_instance
             local new_gdw = {
                 mode = period,
                 target_pages = target,
-                log = { [key] = { pages_read = 0 } },
+                log = { [key] = { pages_read = 0, books = {} } },
                 last_known_pages = {},
             }
             if book_path and curr then
                 new_gdw.last_known_pages[book_path] = curr
+                new_gdw.log[key].books[book_path] = {
+                    start_page = curr,
+                    max_page = curr,
+                }
             end
             if period == "weekly" then
                 self.settings.global_weekly = new_gdw

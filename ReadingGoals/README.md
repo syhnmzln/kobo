@@ -44,6 +44,7 @@ you can set page targets per day or per week:
 - **all books** - track total pages across every book you open
 
 targets are fixed to the value you set. missed pages do **not** carry over to the next day/week.
+progress is based on forward movement from your starting page for that period, so jumping back and re-reading pages won't inflate the count.
 
 you can check your progress anytime from the "view progress" option.
 
