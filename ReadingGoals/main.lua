@@ -117,19 +117,30 @@ function ReadingGoal:_statusBarText()
         local effective = dw.target_pages
         local suffix = dw.mode == "weekly" and "wk" or "today"
         local delta = effective - read
+        local use_pct = dw.goal_mode == "percentage"
+            and dw.total_effective_pages and dw.total_effective_pages > 0
+            and dw.mode == "daily"
+        local unit = "pg"
+        local compact_amount = tostring(delta)
+        if use_pct then
+            local pct = (100 * effective) / dw.total_effective_pages
+            unit = string.format("%.1f%%%%", pct)
+            compact_amount = string.format("%.1f%%%%", (100 * math.abs(delta)) / dw.total_effective_pages)
+        end
+
         if delta > 0 then
             if compact then
-                table.insert(parts, string.format("-%d %s", delta, suffix))
+                table.insert(parts, string.format("-%s %s", compact_amount, suffix))
             else
-                table.insert(parts, string.format("-%d pg left %s", delta, suffix))
+                table.insert(parts, string.format("-%d %s left %s", delta, unit, suffix))
             end
         elseif delta == 0 then
             table.insert(parts, string.format("✓ %s", suffix))
         else
             if compact then
-                table.insert(parts, string.format("+%d %s", math.abs(delta), suffix))
+                table.insert(parts, string.format("+%s %s", compact_amount, suffix))
             else
-                table.insert(parts, string.format("+%d pg over %s", math.abs(delta), suffix))
+                table.insert(parts, string.format("+%d %s over %s", math.abs(delta), unit, suffix))
             end
         end
     end
