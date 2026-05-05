@@ -812,6 +812,21 @@ function ReadingGoal:addToMainMenu(menu_items)
                 separator = true,
             },
             {
+                text = _("Book goal"),
+                sub_item_table = {
+                    {
+                        text = _("Set daily pages by completion timeframe"),
+                        keep_menu_open = true,
+                        callback = function(tmi) self:_showBookCompletionGoalDialog("page", tmi) end,
+                    },
+                    {
+                        text = _("Set daily completion % by timeframe"),
+                        keep_menu_open = true,
+                        callback = function(tmi) self:_showBookCompletionGoalDialog("percentage", tmi) end,
+                    },
+                },
+            },
+            {
                 text = _("Settings"),
                 sub_item_table = {
                     {
@@ -1240,6 +1255,72 @@ function ReadingGoal:_showSetDailyWeeklyDialog(scope, period, touchmenu_instance
             text = T(_("Goal set: %1 pages per %2"), target, period_label),
             timeout = 5,
         })
+        if touchmenu_instance then touchmenu_instance:updateItems() end
+    end
+
+    UIManager:show(dlg)
+end
+
+function ReadingGoal:_showBookCompletionGoalDialog(goal_mode, touchmenu_instance)
+    local total = select(2, self:_getPages())
+    if not total or total <= 0 then
+        UIManager:show(InfoMessage:new{ text = _("Cannot determine total effective pages for this book") })
+        return
+    end
+
+    local title = goal_mode == "percentage"
+        and _("Set daily completion % by timeframe")
+        or _("Set daily pages by completion timeframe")
+
+    local dlg
+    dlg = InputDialog:new{
+        title = title,
+        input = "",
+        input_hint = _("Completion timeframe in days: (1-99)"),
+        input_type = "number",
+        buttons = { { { text = _("Cancel") }, { text = _("Set") } } },
+    }
+
+    dlg.buttons[1][1].callback = function() UIManager:close(dlg) end
+    dlg.buttons[1][2].callback = function()
+        local days = tonumber(dlg:getInputText())
+        UIManager:close(dlg)
+        if not days or days < 1 or days > 99 then
+            UIManager:show(InfoMessage:new{ text = _("Please enter a number between 1 and 99") })
+            return
+        end
+
+        local curr = self:_getPages()
+        local key = self:_today()
+        local target_pages
+        local info_text
+        if goal_mode == "percentage" then
+            local daily_pct = math.floor(((100 / days) * 10) + 0.5) / 10
+            target_pages = math.max(1, math.ceil((total * daily_pct) / 100))
+            info_text = T(_("Goal set: %1%% daily (~%2 pages/day, %3 days to finish)"), daily_pct, target_pages, days)
+        else
+            target_pages = math.max(1, math.ceil(total / days))
+            info_text = T(_("Goal set: %1 pages per day (%2 pages / %3 days)"), target_pages, total, days)
+        end
+
+        self.book_daily = {
+            mode = "daily",
+            target_pages = target_pages,
+            start_date = self:_today(),
+            last_known_page = curr or 0,
+            goal_mode = goal_mode,
+            completion_days = days,
+            total_effective_pages = total,
+            log = { [key] = { pages_read = 0, start_page = curr or 0, max_page = curr or 0 } },
+        }
+        self:_persistDailyWeeklyToDoc()
+        self:_ensureFooterEnabled()
+        self:update_status_bars()
+        UIManager:show(InfoMessage:new{
+            text = info_text,
+            timeout = 5,
+        })
+
         if touchmenu_instance then touchmenu_instance:updateItems() end
     end
 
