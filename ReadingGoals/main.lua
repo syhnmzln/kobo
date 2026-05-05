@@ -877,6 +877,18 @@ function ReadingGoal:addToMainMenu(menu_items)
                             if tmi then tmi:updateItems() end
                         end,
                     },
+                    {
+                        text_func = function()
+                            local mode = self.settings.compact_daily_weekly_status and _("On") or _("Off")
+                            return T(_("Compact status display: %1"), mode)
+                        end,
+                        keep_menu_open = true,
+                        callback = function(tmi)
+                            self.settings.compact_daily_weekly_status = not self.settings.compact_daily_weekly_status or nil
+                            self:_refreshStatusBars()
+                            if tmi then tmi:updateItems() end
+                        end,
+                    },
                 },
             },
             {
@@ -952,18 +964,6 @@ function ReadingGoal:addToMainMenu(menu_items)
                         text = _("View progress"),
                         keep_menu_open = true,
                         callback = function() self:_showDailyWeeklyProgress() end,
-                    },
-                    {
-                        text_func = function()
-                            local mode = self.settings.compact_daily_weekly_status and _("On") or _("Off")
-                            return T(_("Compact status display: %1"), mode)
-                        end,
-                        keep_menu_open = true,
-                        callback = function(tmi)
-                            self.settings.compact_daily_weekly_status = not self.settings.compact_daily_weekly_status or nil
-                            self:_refreshStatusBars()
-                            if tmi then tmi:updateItems() end
-                        end,
                     },
                     {
                         text = _("Stop daily/weekly goals"),
