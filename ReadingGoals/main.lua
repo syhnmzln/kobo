@@ -126,8 +126,8 @@ function ReadingGoal:_statusBarText()
         if use_pct then
             local delta_pct = (100 * math.abs(delta)) / dw.total_effective_pages
             verbose_amount = string.format("%.1f", delta_pct)
-            verbose_unit = "%%"
-            compact_amount = string.format("%.1f%%%%", delta_pct)
+            verbose_unit = "%"
+            compact_amount = string.format("%.1f%%", delta_pct)
         end
 
         if delta > 0 then
