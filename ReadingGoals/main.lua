@@ -260,19 +260,29 @@ end
 function ReadingGoal:remainingProgress()
     if not self:goalActive() then return "" end
     local curr, total, _sl, stable_idx, _sc = self:_getPages()
+    local compact = self.settings and self.settings.compact_daily_weekly_status
 
     if self.goal_type == "percentage" then
         if not (curr and total and total > 0) then return _("Calculating…") end
-        local remaining = self.goal_percentage - (curr / total) * 100
-        return string.format("%.1f%% left", math.max(remaining, 0))
+        local remaining = math.max(self.goal_percentage - (curr / total) * 100, 0)
+        if compact then
+            return string.format("-%.1f%%", remaining)
+        end
+        return string.format("%.1f%% left", remaining)
     elseif self.goal_type == "stable_page" then
         if not stable_idx then return _("Calculating…") end
-        local remaining = self.goal_stable_page_idx - stable_idx
-        return string.format("%d sp left", math.max(remaining, 0))
+        local remaining = math.max(self.goal_stable_page_idx - stable_idx, 0)
+        if compact then
+            return string.format("-%d sp", remaining)
+        end
+        return string.format("%d sp left", remaining)
     else
         if not curr then return _("Calculating…") end
-        local remaining = self.goal_page - curr
-        return string.format("%d pg left", math.max(remaining, 0))
+        local remaining = math.max(self.goal_page - curr, 0)
+        if compact then
+            return string.format("-%d pg", remaining)
+        end
+        return string.format("%d pg left", remaining)
     end
 end
 
