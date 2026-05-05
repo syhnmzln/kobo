@@ -233,9 +233,33 @@ function ReadingGoal:_getPages()
         local ok, v = pcall(function() return self.ui.document:getCurrentPage() end)
         if ok and type(v) == "number" and v > 0 then curr = v end
     end
-    if self.ui.document and self.ui.document.getPageCount then
-        local ok, v = pcall(function() return self.ui.document:getPageCount() end)
-        if ok and type(v) == "number" and v > 0 then total = v end
+    local doc = self.ui and self.ui.document
+    if doc then
+        local flow_total
+        local has_hidden_flows = false
+        if doc.hasHiddenFlows then
+            local ok_hidden, v_hidden = pcall(function() return doc:hasHiddenFlows() end)
+            has_hidden_flows = ok_hidden and v_hidden
+        end
+        if has_hidden_flows and self.ui.getCurrentPage and doc.getPageFlow and doc.getTotalPagesInFlow then
+            local ok_curr, current_page = pcall(function() return self.ui:getCurrentPage() end)
+            if ok_curr and type(current_page) == "number" and current_page > 0 then
+                local ok_flow, flow = pcall(function() return doc:getPageFlow(current_page) end)
+                if ok_flow and flow then
+                    local ok_total, v = pcall(function() return doc:getTotalPagesInFlow(flow) end)
+                    if ok_total and type(v) == "number" and v > 0 then
+                        flow_total = v
+                    end
+                end
+            end
+        end
+
+        if flow_total and flow_total > 0 then
+            total = flow_total
+        elseif doc.getPageCount then
+            local ok, v = pcall(function() return doc:getPageCount() end)
+            if ok and type(v) == "number" and v > 0 then total = v end
+        end
     end
     local stable_label, stable_idx, stable_count
     if self:_hasStablePages() then
